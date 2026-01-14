@@ -3,12 +3,14 @@ const size = 500;
 const cell = size / 15;
 const playingField = document.getElementById("field");
 const ctx = playingField.getContext("2d");
+let isGameOver = false;
 function fillRect(x, y, w, h, color) {
     ctx.fillStyle = color;
     ctx.fillRect(x * cell, y * cell, w * cell, h * cell);
 }
-function drawLine(line, color) {
-    for (const cell of line) {
+function drawPersonalLine(line, color) {
+    for (let i = 1; i < line.length; i++) {
+        const cell = line[i];
         fillRect(cell.x, cell.y, 1, 1, color);
     }
 }
@@ -19,19 +21,19 @@ function drawPlayer(gamer) {
 
 
 const greenLine = [
-    {x:8, y:1}, {x:7, y:1}, {x:7, y:2}, {x:7, y:3}, {x:7, y:4}, {x:7, y:5}
+    {x: 7, y: 0}, {x:8, y:1}, {x:7, y:1}, {x:7, y:2}, {x:7, y:3}, {x:7, y:4}, {x:7, y:5}
 ];
 
 const redLine = [
-    {x:1, y:6}, {x:1, y:7}, {x:2, y:7}, {x:3, y:7}, {x:4, y:7}, {x:5, y:7}
+    {x: 0, y: 7}, {x:1, y:6}, {x:1, y:7}, {x:2, y:7}, {x:3, y:7}, {x:4, y:7}, {x:5, y:7}
 ];
 
 const blueLine = [
-    {x:6, y:13}, {x:7, y:13}, {x:7, y:12}, {x:7, y:11}, {x:7, y:10}, {x:7, y:9}
+    {x: 7, y: 14}, {x:6, y:13}, {x:7, y:13}, {x:7, y:12}, {x:7, y:11}, {x:7, y:10}, {x:7, y:9}
 ];
 
 const yellowLine = [
-    {x:13, y:8}, {x:13, y:7}, {x:12, y:7}, {x:11, y:7}, {x:10, y:7}, {x:9, y:7}
+    {x: 14, y: 7}, {x:13, y:8}, {x:13, y:7}, {x:12, y:7}, {x:11, y:7}, {x:10, y:7}, {x:9, y:7}
 ];
 
 const commonLine = [
@@ -48,10 +50,10 @@ const commonLine = [
     {x: 6, y: 2}, {x: 6, y: 1}
 ]
 
-drawLine(greenLine, 'green');
-drawLine(redLine, 'red');
-drawLine(blueLine, 'blue');
-drawLine(yellowLine, 'yellow');
+drawPersonalLine(greenLine, 'green');
+drawPersonalLine(redLine, 'red');
+drawPersonalLine(blueLine, 'blue');
+drawPersonalLine(yellowLine, 'yellow');
 
 let currentGamer;
 let currentGamerIndex = 0;
@@ -167,11 +169,6 @@ function chooseCurrentGamer() {
         currentGamer.currentCoord = { ...currentGamer.startCoord };
     }
 
-    if (checkWin()) {
-        console.log(`${color} wins!`);
-        return;
-    }
-
     currentGamerIndex++;
     if (currentGamerIndex >= gamersList.length) currentGamerIndex = 0;
 
@@ -179,6 +176,9 @@ function chooseCurrentGamer() {
 }
 
 function calculateNextPosition(currentCoord, step) {
+    if(currentGamer.isOnPersonalLine){
+        moveOnPersonalLine(currentCoord, step);
+    }
     if (!currentGamer.isOnPersonalLine) {
         let currentIndex = commonLine.findIndex(
             c => c.x === currentCoord.x && c.y === currentCoord.y
@@ -219,35 +219,19 @@ function calculateNextPosition(currentCoord, step) {
 
 function moveOnPersonalLine(currentCoord, step) {
     const line = currentGamer.personalLine;
+    let index = line.findIndex(c => c.x === currentCoord.x && c.y === currentCoord.y);
 
-    let index = line.findIndex(
-        c => c.x === currentCoord.x && c.y === currentCoord.y
-    );
-
-    if (index === -1) index = 0;
-
-    while (step > 0 && index < line.length) {
-        fillRect(currentCoord.x, currentCoord.y, 1, 1, 'black');
-
-        index++;
-        if (index < line.length) {
-            const cell = line[index];
-            currentCoord.x = cell.x;
-            currentCoord.y = cell.y;
-        }
-
-        step--;
-    }
-
-    if (
-        currentCoord.x === currentGamer.winCoord.x &&
-        currentCoord.y === currentGamer.winCoord.y
-    ) {
-        console.log(`${currentGamer.color.toUpperCase()} WINS!`);
+    index += step;
+    if (index >= line.length) index = line.length - 1;
+    const cell = line[index];
+    currentCoord.x = cell.x;
+    currentCoord.y = cell.y;
+    fillRect(cell.x, cell.y, 1, 1, 'black');
+    if (index === line.length - 1) {
+        showLog(`${currentGamer.color.toUpperCase()} WINS!`);
+        isGameOver = true;
     }
 }
-
-
 
 function move(currentCoord, step) {
     if (
@@ -260,24 +244,23 @@ function move(currentCoord, step) {
 
     calculateNextPosition(currentCoord, step);
     drawPlayer(currentGamer);
-    if (checkWin()) {
-        console.log("YOU WIN");
-    }
 }
-
-function checkWin() {
-    const { x, y } = currentGamer.currentCoord;
-    return x === currentGamer.winCoord.x && y === currentGamer.winCoord.y;
-}
-
 
 function diceValue() {
     return Math.floor(Math.random() * (Math.floor(6) - Math.ceil(1) + 1)) + Math.ceil(1);
 }
 
 function gameLogic() {
+    if (isGameOver) return;
     chooseCurrentGamer();
     const step = diceValue();
-    console.log(step);
+    showLog(`Step: ${step}, Player: ${currentGamer.color}, Coord: (${currentGamer.currentCoord.x}, ${currentGamer.currentCoord.y})`);
     move(currentGamer.currentCoord, step);
 }
+
+
+function showLog(message) {
+    const log = document.getElementById('game-log');
+    log.textContent = message;
+}
+
